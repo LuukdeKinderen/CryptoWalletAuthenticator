@@ -1,0 +1,64 @@
+<html>
+
+<head>
+    <title>Crypto wallet authenticator</title>
+</head>
+
+<body>
+    <h1>You can use this page to authenticate with your blockchain address using MetaMask</h1>
+
+    <button id="loginButton">Sign in to MetaMask</button>
+    <p>Your blockchain wallet adress: <i id="walletAdress">you need to sign in</i></p>
+
+    <script>
+        window.userWalletAddress = null
+        const loginButton = document.getElementById('loginButton')
+        const walletAdress = document.getElementById('walletAdress')
+
+        function toggleButton() {
+            // check if MetaMask 
+            if (!window.ethereum) {
+
+                loginButton.innerText = "MetaMask is not installed"
+                loginButton.disabled = true
+
+                return false;
+            }
+            loginButton.addEventListener('click', loginWithMetaMask)
+        }
+
+        async function loginWithMetaMask() {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+                .catch((e) => {
+                    console.error(e.message)
+                    return
+                })
+            if (!accounts) { return }
+
+            window.userWalletAddress = accounts[0]
+            walletAdress.innerHTML = window.userWalletAddress;
+            loginButton.innerText = 'Sign out of MetaMask'
+            loginButton.removeEventListener('click', loginWithMetaMask)
+            setTimeout(() => {
+                loginButton.addEventListener('click', signOutOfMetaMask)
+            }, 200)
+        }
+
+        function signOutOfMetaMask() {
+            window.userWalletAddress = null
+            walletAdress.innerText = 'you need to sign in'
+            loginButton.innerText = 'Sign in to MetaMask'
+
+            loginButton.removeEventListener('click', signOutOfMetaMask)
+            setTimeout(() => {
+                loginButton.addEventListener('click', loginWithMetaMask)
+            }, 200)
+        }
+        // if whole website is loaded
+        window.addEventListener('DOMContentLoaded', (event) => {
+            toggleButton()
+        })
+    </script>
+</body>
+
+</html>
