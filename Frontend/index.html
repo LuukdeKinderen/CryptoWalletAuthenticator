@@ -10,13 +10,15 @@
     <button id="loginButton">Sign in to MetaMask</button>
     <p>Your blockchain wallet adress: <i id="walletAdress">you need to sign in</i></p>
 
+    <p id="res"></p>
+
     <script>
-        window.userWalletAddress = null
+        var userWalletAddress = null
         const loginButton = document.getElementById('loginButton')
         const walletAdress = document.getElementById('walletAdress')
 
         function toggleButton() {
-            // check if MetaMask 
+            // check if MetaMask is installed in the browser
             if (!window.ethereum) {
 
                 loginButton.innerText = "MetaMask is not installed"
@@ -24,10 +26,12 @@
 
                 return false;
             }
+            // add login function if MetaMask is installed
             loginButton.addEventListener('click', loginWithMetaMask)
         }
 
         async function loginWithMetaMask() {
+            //get Eth Account public key
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
                 .catch((e) => {
                     console.error(e.message)
@@ -35,7 +39,28 @@
                 })
             if (!accounts) { return }
 
-            window.userWalletAddress = accounts[0]
+            userWalletAddress = accounts[0]
+
+            //Recive nonce from backend
+            var nonce = await readNonce(userWalletAddress)
+            console.log(nonce)
+
+            //sign nonce
+            var signedNonce = await ethereum.request({
+                method: 'personal_sign',
+                params: [
+                    nonce.hexEncode(),
+                    userWalletAddress
+                ]
+            })
+
+            //validate signed nonce
+            var jwt = await validateSignedNonce(signedNonce, nonce)
+            console.log(jwt);
+
+            //store jwt to use app
+            //TODO
+
             walletAdress.innerHTML = window.userWalletAddress;
             loginButton.innerText = 'Sign out of MetaMask'
             loginButton.removeEventListener('click', loginWithMetaMask)
@@ -54,9 +79,33 @@
                 loginButton.addEventListener('click', loginWithMetaMask)
             }, 200)
         }
+
+        async function readNonce(walletAdress) {
+            const response = await fetch(`http://localhost:7071/api/ReadNonce?walletAdress=${walletAdress}`);
+            return response.text()
+        }
+
+        async function validateSignedNonce(signedNonce,nonce) {
+            //nonce = nonce.hexEncode();
+            const response = await fetch(`http://localhost:7071/api/ValidateSignedNonce?signedNonce=${signedNonce}&nonce=${nonce}`);
+            return response.text()
+        }
+
+        // to hex helpercode
+        String.prototype.hexEncode = function () {
+            var hex, i;
+            var result = "";
+            for (i = 0; i < this.length; i++) {
+                result += this.charCodeAt(i).toString(16);
+            }
+            return result
+        }
+
+
         // if whole website is loaded
         window.addEventListener('DOMContentLoaded', (event) => {
             toggleButton()
+
         })
     </script>
 </body>
