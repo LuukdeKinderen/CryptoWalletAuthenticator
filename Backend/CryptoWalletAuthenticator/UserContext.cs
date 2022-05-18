@@ -13,6 +13,7 @@ namespace CryptoWalletAuthenticator
         [Key]
         public string WalletAdress { get; set; }
         public string Nonce { get; set; }
+        public string FavoriteColour {  get; set; }
     }
     public class UserContext : DbContext
     {

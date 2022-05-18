@@ -2,32 +2,72 @@
 
 <head>
     <title>Crypto wallet authenticator</title>
+    <style>
+        table {
+            font-family: arial, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        td,
+        th {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+
+        tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>You can use this page to authenticate with your blockchain address using MetaMask</h1>
-
+    <h1>You can use this page to authenticate with your blockchain address using MetaMask, and set your favorite colour
+    </h1>
     <button id="loginButton">Sign in to MetaMask</button>
+    <p id="errorText" style="color: red;"></p>
+
     <p>Your blockchain wallet adress: <i id="walletAdress">you need to sign in</i></p>
 
-    <p id="res"></p>
+    <div style="padding-top: 10px;padding-bottom: 10px;">
+        <label>Favorite colour</label>
+        <input type="text" id="colourInput" />
+    </div>
+    <button id="colourButton">Save favorite colour</button>
+
+    <p id="succesMessage" style="color: green;"></p>
+
+    <h2>Users and their favorite colour</h2>
+    <table>
+        <tbody id="table">
+
+        </tbody>
+    </table>
 
     <script>
         var userWalletAddress = null
         const loginButton = document.getElementById('loginButton')
-        const walletAdress = document.getElementById('walletAdress')
+        const walletAdressText = document.getElementById('walletAdress')
+        const errorText = document.getElementById('errorText')
+        const colourButton = document.getElementById('colourButton')
+        const colourInput = document.getElementById('colourInput')
+        const succesMessageText = document.getElementById('succesMessage')
 
-        function toggleButton() {
+
+        function toggleButtons() {
             // check if MetaMask is installed in the browser
             if (!window.ethereum) {
 
                 loginButton.innerText = "MetaMask is not installed"
                 loginButton.disabled = true
+                errorText.innerText = "Please install MetaMask and return"
 
                 return false;
             }
             // add login function if MetaMask is installed
             loginButton.addEventListener('click', loginWithMetaMask)
+            colourButton.addEventListener('click', updateColour)
         }
 
         async function loginWithMetaMask() {
@@ -35,33 +75,55 @@
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
                 .catch((e) => {
                     console.error(e.message)
+                    errorText.innerText = e.message
                     return
                 })
             if (!accounts) { return }
-
+            errorText.innerText = ""
             userWalletAddress = accounts[0]
 
             //Recive nonce from backend
-            var nonce = await readNonce(userWalletAddress)
-            console.log(nonce)
+            const nonce = await fetch(`http://localhost:7071/api/ReadNonce?walletAdress=${userWalletAddress}`)
+                .then(res => { return res.text() })
+                .then(nonce => { return nonce })
+                .catch((e) => {
+                    console.error(e.message)
+                    errorText.innerText = e.message
+                    return
+                })
+            if (!nonce) { return }
+            errorText.innerText = ""
 
             //sign nonce
-            var signedNonce = await ethereum.request({
+            const signedNonce = await ethereum.request({
                 method: 'personal_sign',
                 params: [
                     nonce.hexEncode(),
                     userWalletAddress
                 ]
+            }).catch((e) => {
+                console.error(e.message)
+                errorText.innerText = e.message
+                return
             })
+            if (!signedNonce) { return }
+            errorText.innerText = ""
 
             //validate signed nonce
-            var jwt = await validateSignedNonce(signedNonce, nonce)
-            console.log(jwt);
+            const jwt = await fetch(`http://localhost:7071/api/ValidateSignedNonce?signedNonce=${signedNonce}&nonce=${nonce}`)
+                .then(res => { return res.text() })
+                .then(jwt => { return jwt })
+                .catch((e) => {
+                    console.error(e.message)
+                    errorText.innerText = e.message
+                    return
+                })
+            if (!jwt) { return }
 
             //store jwt to use app
-            //TODO
+            document.cookie = `jwt=${jwt}`
 
-            walletAdress.innerHTML = window.userWalletAddress;
+            walletAdressText.innerHTML = window.userWalletAddress;
             loginButton.innerText = 'Sign out of MetaMask'
             loginButton.removeEventListener('click', loginWithMetaMask)
             setTimeout(() => {
@@ -71,8 +133,12 @@
 
         function signOutOfMetaMask() {
             window.userWalletAddress = null
-            walletAdress.innerText = 'you need to sign in'
+            walletAdressText.innerText = 'you need to sign in'
+            succesMessageText.innerText = ''
             loginButton.innerText = 'Sign in to MetaMask'
+
+            //Delete jwt token
+            document.cookie = "jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
             loginButton.removeEventListener('click', signOutOfMetaMask)
             setTimeout(() => {
@@ -80,15 +146,56 @@
             }, 200)
         }
 
-        async function readNonce(walletAdress) {
-            const response = await fetch(`http://localhost:7071/api/ReadNonce?walletAdress=${walletAdress}`);
-            return response.text()
+
+        async function updateColour() {
+            // get jwt from cookie
+            const jwt = window.getCookie("jwt")
+
+            fetch(`http://localhost:7071/api/UpdateFavoriteColour?colour=${colourInput.value}`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${jwt}`
+                }
+            })
+                .then((res) => {
+                    if (res.ok) {
+                        res.text()
+                            .then(succesMessage => {
+                                succesMessageText.innerText = succesMessage
+                                refreshTable()
+                            })
+                    }
+                    res.text()
+                        .then(errorMessage => {
+                            console.error(errorMessage)
+                            errorText.innerText = errorMessage
+                        })
+
+                })
+            
         }
 
-        async function validateSignedNonce(signedNonce,nonce) {
-            //nonce = nonce.hexEncode();
-            const response = await fetch(`http://localhost:7071/api/ValidateSignedNonce?signedNonce=${signedNonce}&nonce=${nonce}`);
-            return response.text()
+        async function refreshTable() {
+            const table = document.getElementById("table")
+            table.innerHTML = "<tr><th>WalletAdress</th><th>Favorite colour</th></tr>"
+            fetch(`http://localhost:7071/api/GetAllUsers`)
+                .then((res) => {
+                    if (res.ok) {
+                        res.json()
+                            .then(json => {
+                                json.forEach(user => {
+                                    table.innerHTML += `<tr><td>${user.walletAddress}</td><td>${user.favoriteColour}</td></tr>`
+                                });
+                                console.log(json)
+                            })
+                    } else {
+                        res.text()
+                            .then(errorMessage => {
+                                console.error(errorMessage)
+                                errorMessage.innerText = errorMessage
+                            })
+                    }
+                })
         }
 
         // to hex helpercode
@@ -101,11 +208,19 @@
             return result
         }
 
+        window.getCookie = function (name) {
+            var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+            if (match) return match[2];
+        }
+
 
         // if whole website is loaded
         window.addEventListener('DOMContentLoaded', (event) => {
-            toggleButton()
+            //delete jwt on refresh ="log out on refresh"
+            document.cookie = "jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
+            toggleButtons()
+            refreshTable()
         })
     </script>
 </body>
