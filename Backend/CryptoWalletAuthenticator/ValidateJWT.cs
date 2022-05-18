@@ -56,11 +56,19 @@ namespace CryptoWalletAuthenticator
                 return;
             }
 
-            if (!claims.ContainsKey("walletAdress"))
+            if (!claims.ContainsKey("walletAdress") || !claims.ContainsKey("expiryDate"))
             {
                 IsValid = false;
                 return;
             }
+            Console.WriteLine(Convert.ToDateTime(claims["expiryDate"]));
+            Console.WriteLine(DateTime.Now);
+            if (Convert.ToDateTime(claims["expiryDate"]) < DateTime.Now)
+            {
+                IsValid = false;
+                return;
+            }
+
             IsValid = true;
             WalletAdress = Convert.ToString(claims["walletAdress"]);
         }

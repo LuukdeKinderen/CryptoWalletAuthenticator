@@ -2,6 +2,7 @@
 using JWT.Algorithms;
 using JWT.Serializers;
 using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Generic;
 
 namespace CryptoWalletAuthenticator
@@ -29,6 +30,10 @@ namespace CryptoWalletAuthenticator
                 {
                     "walletAdress",
                     user
+                },
+                {
+                    "expiryDate",
+                    DateTime.Now + TimeSpan.FromMinutes(30)
                 }
             };
             string token = _jwtEncoder.Encode(claims, _configuration["JwtKey"]); 

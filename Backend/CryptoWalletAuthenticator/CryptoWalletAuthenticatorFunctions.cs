@@ -135,6 +135,11 @@ namespace CryptoWalletAuthenticator
             string succesMessage = $"User: {walletAdress} is succesfully authenticated!";
             log.LogInformation(succesMessage);
 
+            //Refresh nonce
+            u.Nonce = GetNewRandomNonce();
+            _userContext.Users.Update(u);
+            _userContext.SaveChanges();
+
             //generate jwt and return to user
             GenerateJWTToken generateJWTToken = new GenerateJWTToken(_configuration);
             string token = generateJWTToken.IssuingJWT(walletAdress);
@@ -150,7 +155,10 @@ namespace CryptoWalletAuthenticator
             ValidateJWT auth = new ValidateJWT(req, _configuration);
             if (!auth.IsValid)
             {
-                ObjectResult objectResult = new ObjectResult("Unauthorized, log in first");
+                string errorMessage = "Unauthorized, log in first. Or try logging in and out";
+                log.LogError(errorMessage);
+
+                ObjectResult objectResult = new ObjectResult(errorMessage);
                 objectResult.StatusCode = 401; // Unauthorized code
                 return objectResult;
             }
@@ -164,7 +172,9 @@ namespace CryptoWalletAuthenticator
 
             if (String.IsNullOrEmpty(colour))
             {
-                return new BadRequestObjectResult("colour can not be empty");
+                string errorMessage = "colour can not be empty";
+                log.LogError(errorMessage);
+                return new BadRequestObjectResult(errorMessage);
             }
 
             //get user Using auth wallet adress
