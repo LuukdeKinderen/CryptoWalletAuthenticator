@@ -35,7 +35,7 @@ When you are correctly signed in, you can set a favorite colour for your crypto 
 ![Saved favorite colour](/Frontend/screenshots/6_Authentication_succeded_saved_colour.png "Saved favorite colour")
 
 ### Sign out
-You can log out by hitting the Sign out button. You are now signed out. But your favorite colour is still saved.
+You can sign out by hitting the Sign out button. You are now signed out. But your favorite colour is still saved.
 
 ![Signed out](/Frontend/screenshots/7_sign_out.png "Signed out")
 
@@ -56,3 +56,4 @@ Just to prove that this application supports multiple wallet addresses, below ar
 ![Colour saved for different address](/Frontend/screenshots/11_different_account_different_colour.png "Colour saved for different address")
 
 ## how it works
+![How is works](/how-it-works.png "How is works")
