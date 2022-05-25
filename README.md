@@ -56,4 +56,13 @@ Just to prove that this application supports multiple wallet addresses, below ar
 ![Colour saved for different address](/Frontend/screenshots/11_different_account_different_colour.png "Colour saved for different address")
 
 ## how it works
+1.	The client requests a nonce from the server, which belongs to its wallet address.
+2.	The Server creates a nonce saves it sever-side, and returns it to the client. 
+3.	The client signs the nonce with his wallet and sends the signed nonce, and the original nonce to the server.
+4.	The server recovers, using the signed nonce and the original nonce, the wallet address that was used to sign the signed nonce.
+5.	The server looks for the nonce that was saved on de recovered wallet address.
+6.	The server validates if the saved nonce matches the received nonce.
+7.	The server generates a JWT token for the wallet address, with a lifetime check.
+8.	The server returns the JWT token to the client.
+9.	The client can use the JWT token to authenticate itself.
 ![How is works](/how-it-works.png "How is works")
